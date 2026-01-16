@@ -1,0 +1,39 @@
+name: Crescent Trading 5-Min Scan
+
+on:
+  schedule:
+    # Runs every 5 minutes from 14:00 UTC (9am EST) to 20:55 UTC (4pm EST)
+    # Mon-Fri Only
+    - cron: '*/5 14-20 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Trading Bot
+        run: python bot.py
+
+      - name: Save Alert History
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add alert_log.json || true
+          git commit -m "Update alert history" || true
+          git push
