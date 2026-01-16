@@ -6,7 +6,6 @@ on:
     - cron: '*/5 14-20 * * 1-5'
   workflow_dispatch:
 
-# --- FIX 1: GIVE PERMISSION TO SAVE FILES ---
 permissions:
   contents: write
 
@@ -21,22 +20,26 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          # --- FIX 2: FORCE PYTHON 3.11 (Crucial for yfinance) ---
-          python-version: '3.11'
+          # Keep this on 3.10 or 3.11 since you fixed yfinance
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install yfinance pandas ta requests lxml
+          pip install -r requirements.txt
 
       - name: Run Trading Bot
         run: python bot.py
 
       - name: Save Alert History
-        # --- FIX 3: PREVENT CRASH IF NOTHING TO SAVE ---
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
+          
+          # --- THE FIX IS HERE ---
+          # We pull the latest changes before trying to save.
+          # This prevents the "fetch first" error.
+          git pull --rebase
+          
           git add alert_log.json || true
           if git diff-index --quiet HEAD; then
             echo "No changes to history. Skipping save."
