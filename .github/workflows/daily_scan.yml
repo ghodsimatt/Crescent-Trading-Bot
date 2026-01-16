@@ -6,6 +6,7 @@ on:
     - cron: '*/5 14-20 * * 1-5'
   workflow_dispatch:
 
+# --- FIX 1: GIVE PERMISSION TO SAVE FILES ---
 permissions:
   contents: write
 
@@ -20,20 +21,26 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          # --- FIX 2: FORCE PYTHON 3.11 (Crucial for yfinance) ---
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          pip install --upgrade pip
+          pip install yfinance pandas ta requests lxml
 
       - name: Run Trading Bot
         run: python bot.py
 
       - name: Save Alert History
-        # The '|| true' flag prevents crashing if there are no new alerts to save
+        # --- FIX 3: PREVENT CRASH IF NOTHING TO SAVE ---
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add alert_log.json || true
-          git commit -m "Update alert history" || true
-          git push || true
+          if git diff-index --quiet HEAD; then
+            echo "No changes to history. Skipping save."
+          else
+            git commit -m "Update alert history"
+            git push
+          fi
