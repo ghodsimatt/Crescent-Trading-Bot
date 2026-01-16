@@ -4,9 +4,8 @@ on:
   schedule:
     # Runs every 5 minutes from 9am to 4pm EST (Mon-Fri)
     - cron: '*/5 14-20 * * 1-5'
-  workflow_dispatch: # Allows manual button click
+  workflow_dispatch:
 
-# --- FIX 1: EXPLICIT PERMISSIONS ---
 permissions:
   contents: write
 
@@ -21,26 +20,23 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          # --- FIX IS HERE: CHANGED FROM 3.9 TO 3.10 ---
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
 
       - name: Run Trading Bot
-        # If the bot crashes, this will show us the error
         run: python bot.py
 
       - name: Save Alert History
-        # --- FIX 2: SAFE COMMIT ---
-        # This checks if the file changed before trying to save it.
-        # It prevents the "Exit Code 1" crash when there are no updates.
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add alert_log.json || true
           if git diff-index --quiet HEAD; then
-            print("No changes to history. Skipping save.")
+            echo "No changes to history. Skipping save."
           else
             git commit -m "Update alert history"
             git push
