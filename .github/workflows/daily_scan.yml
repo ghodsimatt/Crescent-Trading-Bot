@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # CRITICAL FIX: Allows the bot to sync with the server
+          fetch-depth: 0 # Downloads full history (Crucial)
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -30,24 +30,27 @@ jobs:
       - name: Run Trading Bot
         run: python bot.py
 
-      - name: Save Alert History
+      - name: Save Alert History (The Nuclear Fix)
         run: |
+          # 1. Setup User
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           
-          # 1. Add the file so we track it
+          # 2. Add the file
           git add alert_log.json || true
           
-          # 2. Check if the file actually changed
+          # 3. Check if there are changes
           if git diff-index --quiet HEAD; then
             echo "No changes to history. Skipping save."
           else
-            # 3. Commit the change locally
+            # 4. Commit locally
             git commit -m "Update alert history"
             
-            # 4. THE FIX: Download the latest website version and merge it
-            git pull --rebase origin main
+            # 5. THE NUCLEAR COMMAND
+            # This forces the bot to pause its work, download your changes, 
+            # and then re-apply its work on top.
+            git pull --rebase --autostash origin main
             
-            # 5. Push the final result
+            # 6. Push
             git push origin main
           fi
