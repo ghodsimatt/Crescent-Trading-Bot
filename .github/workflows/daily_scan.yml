@@ -16,11 +16,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: main
+          fetch-depth: 0 # FIX 1: Download full history so we can sync properly
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          # Using 3.10 to ensure yfinance works correctly
           python-version: '3.10'
 
       - name: Install dependencies
@@ -32,23 +34,18 @@ jobs:
 
       - name: Save Alert History
         run: |
-          # 1. Setup User Identity
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           
-          # 2. Add the file and Commit
+          # FIX 2: Download changes from the server BEFORE we try to commit
+          # This prevents the "Updates were rejected" error
+          git pull origin main
+          
           git add alert_log.json || true
           
-          # Only proceed if there are changes
           if git diff-index --quiet HEAD; then
             echo "No changes to history. Skipping save."
           else
             git commit -m "Update alert history"
-            
-            # 3. THE FIX (FROM THE HINT)
-            # We pull the latest changes and rebase our new commit on top of them.
-            git pull origin main --rebase
-            
-            # 4. Push the result
             git push origin main
           fi
