@@ -2,11 +2,9 @@ name: Crescent Trading 5-Min Scan
 
 on:
   schedule:
+    # Runs every 5 minutes from 9am to 4pm EST (Mon-Fri)
     - cron: '*/5 14-20 * * 1-5'
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -19,6 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
+          # Python 3.10 works best with yfinance
           python-version: '3.10'
 
       - name: Install dependencies
@@ -26,26 +25,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Trading Bot
-        # If the bot finds a trade, it sends the alert HERE.
-        # Everything after this step is just "cleanup".
+        # This will scan, send alerts to your phone, and then FINISH.
+        # No saving, no pushing, no crashing.
         run: python bot.py
-
-      - name: Save Alert History (No-Fail Mode)
-        run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          
-          # Try to download latest changes, but don't crash if it fails
-          git pull origin main --rebase || echo "Pull failed, continuing anyway..."
-          
-          git add alert_log.json || true
-          
-          if git diff-index --quiet HEAD; then
-            echo "No changes to history. Skipping save."
-          else
-            git commit -m "Update alert history" || echo "Commit failed, continuing..."
-            
-            # THE MAGIC FIX:
-            # If this push fails, we just print a message and finish GREEN.
-            git push origin main || echo "⚠️ Could not save history, but alerts were sent! Job Success."
-          fi
