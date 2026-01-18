@@ -2,7 +2,6 @@ name: Crescent Trading 5-Min Scan
 
 on:
   schedule:
-    # Runs every 5 minutes from 9am to 4pm EST (Mon-Fri)
     - cron: '*/5 14-20 * * 1-5'
   workflow_dispatch:
 
@@ -17,8 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: main
-          fetch-depth: 0 # FIX 1: Download full history so we can sync properly
+          fetch-depth: 0  # CRITICAL FIX: Allows the bot to sync with the server
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -37,15 +35,19 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           
-          # FIX 2: Download changes from the server BEFORE we try to commit
-          # This prevents the "Updates were rejected" error
-          git pull origin main
-          
+          # 1. Add the file so we track it
           git add alert_log.json || true
           
+          # 2. Check if the file actually changed
           if git diff-index --quiet HEAD; then
             echo "No changes to history. Skipping save."
           else
+            # 3. Commit the change locally
             git commit -m "Update alert history"
+            
+            # 4. THE FIX: Download the latest website version and merge it
+            git pull --rebase origin main
+            
+            # 5. Push the final result
             git push origin main
           fi
