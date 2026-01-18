@@ -3,7 +3,6 @@ import pandas as pd
 import ta
 import requests
 import warnings
-import time
 
 warnings.filterwarnings("ignore")
 
@@ -12,8 +11,7 @@ TOPIC_NAME = "CrescentTrading"
 TOTAL_MONEY = 10000 
 ALERT_THRESHOLD = 9      
 
-# --- INSTITUTIONAL TICKER LIST ---
-# (Same powerful list as before)
+# --- TICKER LIST ---
 raw_tickers = [
     "MMM", "AOS", "ABT", "ABBV", "ACN", "ADBE", "AAP", "AMD", "AES", "AMG", "AFL", "A",
     "APD", "AKAM", "ALK", "ALB", "ARE", "ALGN", "ALLE", "LNT", "ALL", "GOOGL", "GOOG",
