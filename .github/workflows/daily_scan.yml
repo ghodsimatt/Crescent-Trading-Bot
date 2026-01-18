@@ -5,6 +5,7 @@ on:
     - cron: '*/5 14-20 * * 1-5'
   workflow_dispatch:
 
+# Fix permissions so the tool can write to the repo
 permissions:
   contents: write
 
@@ -15,8 +16,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0 # Downloads full history (Crucial)
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -30,27 +29,10 @@ jobs:
       - name: Run Trading Bot
         run: python bot.py
 
-      - name: Save Alert History (The Nuclear Fix)
-        run: |
-          # 1. Setup User
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          
-          # 2. Add the file
-          git add alert_log.json || true
-          
-          # 3. Check if there are changes
-          if git diff-index --quiet HEAD; then
-            echo "No changes to history. Skipping save."
-          else
-            # 4. Commit locally
-            git commit -m "Update alert history"
-            
-            # 5. THE NUCLEAR COMMAND
-            # This forces the bot to pause its work, download your changes, 
-            # and then re-apply its work on top.
-            git pull --rebase --autostash origin main
-            
-            # 6. Push
-            git push origin main
-          fi
+      - name: Auto-Save History
+        # This tool AUTOMATICALLY fixes the "Push Rejected" error.
+        # It detects changes, pulls the latest server updates, and pushes safely.
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Update alert history
+          file_pattern: alert_log.json
