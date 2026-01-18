@@ -1,12 +1,9 @@
 import yfinance as yf
 import pandas as pd
 import ta
-import numpy as np
 import requests
 import warnings
-import json
-import os
-from datetime import datetime
+import time
 
 warnings.filterwarnings("ignore")
 
@@ -14,9 +11,9 @@ warnings.filterwarnings("ignore")
 TOPIC_NAME = "CrescentTrading"
 TOTAL_MONEY = 10000 
 ALERT_THRESHOLD = 9      
-HISTORY_FILE = "alert_log.json"
 
 # --- INSTITUTIONAL TICKER LIST ---
+# (Same powerful list as before)
 raw_tickers = [
     "MMM", "AOS", "ABT", "ABBV", "ACN", "ADBE", "AAP", "AMD", "AES", "AMG", "AFL", "A",
     "APD", "AKAM", "ALK", "ALB", "ARE", "ALGN", "ALLE", "LNT", "ALL", "GOOGL", "GOOG",
@@ -36,7 +33,7 @@ raw_tickers = [
     "ROP", "ROST", "RCL", "CRM", "SCHW", "STZ", "SYK", "SEDG", "SEE", "SRE", "SHW", "SNA",
     "SWK", "SLB", "SBUX", "STT", "SWKS", "SYY", "TDG", "TT", "TER", "TSLA", "TEX", "TFC", "TDY",
     "TFX", "TRV", "TRMB", "TCOM", "UDR", "UAA", "UA", "UNP", "UAL", "UPS", "URI", "UHS", "USB", "VLO", "VTRS",
-    "VZ", "VRTX", "VFC", "VTR", "WMT", "WEC", "WFC", "WRB", "WY", "WDC", "WM", "WAT", "WYNN", "CTRA",
+    "VZ", "VFC", "VTR", "WMT", "WEC", "WFC", "WRB", "WY", "WDC", "WM", "WAT", "WYNN", "CTRA",
     "XEL", "XRX", "XOM", "XYL", "YUM", "ZBRA", "ZTS", "NVDA", "ORCL", "ASML", "PLTR", "COST", "BABA",
     "NFLX", "TM", "CAT", "AZN", "MS", "SAP", "GS", "HSBC", "NVS", "NVO", "RY", "TMO", "APP", "SHOP", "TMUS",
     "SHEL", "MUFG", "BX", "KLAC", "SAN", "QCOM", "UBER", "GEV", "TJX", "BKNG", "TXN", "HDB", "NEE", "RTNTF",
@@ -67,24 +64,6 @@ raw_tickers = [
     "GIB", "PTC", "KTOS", "AMCR", "DGX", "NI", "XPEV", "SBAC", "CHKP", "TWLO", "BG", "WWD"
 ]
 
-def load_history():
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_history(history):
-    with open(HISTORY_FILE, 'w') as f:
-        json.dump(history, f)
-
-def should_alert(ticker, history):
-    now = datetime.now()
-    if ticker not in history:
-        return True 
-    last_sent = datetime.strptime(history[ticker], "%Y-%m-%d %H:%M:%S")
-    hours_passed = (now - last_sent).total_seconds() / 3600
-    return hours_passed >= 4
-
 def send_phone_alert(message, tags="moneybag"):
     try:
         requests.post(f"https://ntfy.sh/{TOPIC_NAME}", data=message.encode(encoding='utf-8'), headers={"Title": "Crescent Alert 🌙", "Priority": "high", "Tags": tags})
@@ -96,6 +75,7 @@ def analyze_stock(ticker):
         df = stock.history(period="1y") 
         if df.empty or len(df) < 201: return None
 
+        # --- TECHNICAL INDICATORS ---
         df['SMA_200'] = ta.trend.SMAIndicator(df['Close'], window=200).sma_indicator()
         df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
         macd = ta.trend.MACD(df['Close']); df['MACD'], df['MACD_Signal'] = macd.macd(), macd.macd_signal()
@@ -115,6 +95,7 @@ def analyze_stock(ticker):
         score = 0; reasons = []; signal_type = "NEUTRAL"
         trend = "UP" if price > sma else "DOWN"
 
+        # --- SCORING SYSTEM ---
         if trend == "UP":
             signal_type = "BUY"; score += 1
             if latest['RSI'] < 55: score += 1; reasons.append("RSI")
@@ -153,8 +134,6 @@ def analyze_stock(ticker):
 
 # --- MAIN EXECUTION ---
 print("✅ Starting Scan...")
-history = load_history()
-new_history = history.copy()
 results = []
 
 for ticker in raw_tickers:
@@ -166,12 +145,8 @@ results.sort(key=lambda x: x['Score'], reverse=True)
 alert_count = 0
 
 for r in results:
-    ticker = r['Stock']
-    if should_alert(ticker, history):
-        alert_count += 1
-        msg = f"💎 CRESCENT ALPHA: {r['Type']} {ticker}\nScore: {r['Score']}/11\nDuration: {r['Duration']}\nEntry: ${r['Price']:.2f}\nShares: {r['Shares']}\nStop: ${r['Stop_Loss']:.2f}\nTarget: ${r['Take_Profit']:.2f}"
-        send_phone_alert(msg, tags="rocket,moneybag")
-        new_history[ticker] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    msg = f"💎 CRESCENT ALPHA: {r['Type']} {r['Stock']}\nScore: {r['Score']}/11\nDuration: {r['Duration']}\nEntry: ${r['Price']:.2f}\nShares: {r['Shares']}\nStop: ${r['Stop_Loss']:.2f}\nTarget: ${r['Take_Profit']:.2f}"
+    send_phone_alert(msg, tags="rocket,moneybag")
+    alert_count += 1
 
-save_history(new_history)
-print(f"✅ Scan Complete. Sent {alert_count} new alerts.")
+print(f"✅ Scan Complete. Sent {alert_count} alerts.")
