@@ -16,12 +16,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          ref: main  # Forces it to grab the specific branch
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
+          # Using 3.10 to ensure yfinance works correctly
           python-version: '3.10'
 
       - name: Install dependencies
@@ -31,10 +30,25 @@ jobs:
       - name: Run Trading Bot
         run: python bot.py
 
-      - name: Auto-Save History
-        # THIS IS THE FIX. It replaces the manual git commands.
-        # It handles the "Traffic Jam" error automatically.
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Update alert history
-          file_pattern: alert_log.json
+      - name: Save Alert History
+        run: |
+          # 1. Setup User Identity
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          # 2. Add the file and Commit
+          git add alert_log.json || true
+          
+          # Only proceed if there are changes
+          if git diff-index --quiet HEAD; then
+            echo "No changes to history. Skipping save."
+          else
+            git commit -m "Update alert history"
+            
+            # 3. THE FIX (FROM THE HINT)
+            # We pull the latest changes and rebase our new commit on top of them.
+            git pull origin main --rebase
+            
+            # 4. Push the result
+            git push origin main
+          fi
