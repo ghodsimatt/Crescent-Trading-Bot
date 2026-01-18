@@ -17,7 +17,6 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          # Python 3.10 works best with yfinance
           python-version: '3.10'
 
       - name: Install dependencies
@@ -25,6 +24,5 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Trading Bot
-        # This will scan, send alerts to your phone, and then FINISH.
-        # No saving, no pushing, no crashing.
+        # This scans and sends alerts. It does NOT try to save anything.
         run: python bot.py
